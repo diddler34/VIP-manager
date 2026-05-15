@@ -1,0 +1,66 @@
+{
+    "vip": [
+        {
+            "name": "SOMBRA",
+            "discord": "SOMBRA",
+            "steam_id": "76561198963273913",
+            "expires": "2026-06-07"
+        },
+        {
+            "name": "PATTAS",
+            "discord": "PATTAS",
+            "steam_id": "76561199876492065",
+            "expires": "2026-06-07"
+        },
+        {
+            "name": "PANDA",
+            "discord": "PANDA",
+            "steam_id": "76561198348627252",
+            "expires": "2026-06-03"
+        },
+        {
+            "name": "KYOIA",
+            "discord": "KYOIA",
+            "steam_id": "76561198741593035",
+            "expires": "2026-06-02"
+        },
+        {
+            "name": "ASMOD",
+            "discord": "ASMODEUS",
+            "steam_id": "76561198387975648",
+            "expires": "2026-06-01"
+        },
+        {
+            "name": "RENEGADO",
+            "discord": "RENEGADOJOGA",
+            "steam_id": "76561198754177913",
+            "expires": "2026-05-28"
+        },
+        {
+            "name": "GAMA",
+            "discord": "GAMA",
+            "steam_id": "76561198770285378",
+            "expires": "2026-06-12"
+        },
+        {
+            "name": "YKBULL",
+            "discord": "YKBULL",
+            "steam_id": "76561198293738242",
+            "expires": "2026-05-21"
+        }
+    ],
+    "insurance": [
+        {
+            "name": "TAJ",
+            "discord": "TAJ",
+            "steam_id": "N/A",
+            "expires": "2026-06-12"
+        },
+        {
+            "name": "SKYLLER",
+            "discord": "SKYLLER",
+            "steam_id": "N/A",
+            "expires": "2026-07-12"
+        }
+    ]
+}
