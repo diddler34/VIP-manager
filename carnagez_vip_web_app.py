@@ -20,6 +20,7 @@ ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "1234"
 ACTIVATION_CODE = "CZP2026"
 RENEWAL_DAYS = 30
+INSURANCE_REDEEM_COOLDOWN_HOURS = 30
 
 APP_FOLDER = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(APP_FOLDER, "carnagez_data.json")
@@ -73,6 +74,32 @@ def calculate_days_left(expires_string):
         return -1
 
 
+def get_redeem_cooldown(person):
+    redeem_time = person.get("redeem_cooldown")
+
+    if not redeem_time:
+        return None
+
+    try:
+        cooldown_end = datetime.fromisoformat(redeem_time)
+        now = datetime.now()
+
+        if now >= cooldown_end:
+            return None
+
+        remaining = cooldown_end - now
+        total_seconds = int(remaining.total_seconds())
+
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+
+        return f"{hours:02}:{minutes:02}:{seconds:02}"
+
+    except Exception:
+        return None
+
+
 def login_required():
     return session.get("logged_in") is True
 
@@ -106,6 +133,8 @@ TEXT = {
         "active": "Active",
         "expired": "Expired",
         "actions": "Actions",
+        "redeem": "Redeem",
+        "cooldown": "Cooldown",
         "details": "Details",
         "confirm_payment": "+30 Days",
         "alter_time": "Alter Time",
@@ -145,6 +174,8 @@ TEXT = {
         "active": "Ativo",
         "expired": "Expirado",
         "actions": "Ações",
+        "redeem": "Resgatar",
+        "cooldown": "Cooldown",
         "details": "Detalhes",
         "confirm_payment": "+30 Dias",
         "alter_time": "Alterar Tempo",
@@ -500,7 +531,7 @@ HTML = """
         // Auto-refresh every 60 seconds so countdown/status stays updated.
         setTimeout(function() {
             window.location.reload();
-        }, 60000);
+        }, 1000);
 
         function confirmDelete() {
             return confirm("Are you sure you want to delete this person?");
@@ -569,7 +600,10 @@ HTML = """
                                 <th>{{ t('days_left') }}</th>
                                 <th>{{ t('expires') }}</th>
                                 <th>{{ t('status') }}</th>
-                                <th>{{ t('actions') }}</th>
+                                {% if tab == 'insurance' %}
+                                <th>{{ t('cooldown') }}</th>
+                            {% endif %}
+                            <th>{{ t('actions') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -585,6 +619,18 @@ HTML = """
                                     <td class="{% if active %}status-active{% else %}status-expired{% endif %}">
                                         {{ t('active') if active else t('expired') }}
                                     </td>
+
+                                    {% if tab == 'insurance' %}
+                                        <td>
+                                            {% set cooldown = get_redeem_cooldown(person) %}
+                                            {% if cooldown %}
+                                                <span style="color:#F59E0B;font-weight:bold;">{{ cooldown }}</span>
+                                            {% else %}
+                                                <span style="color:#22C55E;font-weight:bold;">READY</span>
+                                            {% endif %}
+                                        </td>
+                                    {% endif %}
+
                                     <td>
                                         <div class="actions">
                                             <a class="btn btn-small btn-dark" href="{{ url_for('details', tab=tab, index=loop.index0) }}">{{ t('details') }}</a>
@@ -594,6 +640,12 @@ HTML = """
                                             </form>
 
                                             <a class="btn btn-small btn-yellow" href="{{ url_for('alter_time', tab=tab, index=loop.index0) }}">{{ t('alter_time') }}</a>
+
+                                            {% if tab == 'insurance' %}
+                                                <form method="POST" action="{{ url_for('redeem_insurance', index=loop.index0) }}">
+                                                    <button class="btn btn-small btn-dark" type="submit">{{ t('redeem') }}</button>
+                                                </form>
+                                            {% endif %}
 
                                             <form method="POST" action="{{ url_for('delete_person', tab=tab, index=loop.index0) }}" onsubmit="return confirmDelete();">
                                                 <button class="btn btn-small btn-red" type="submit">{{ t('delete_vip') }}</button>
@@ -749,7 +801,8 @@ def dashboard(tab):
         people=people,
         message=message,
         t=t,
-        calculate_days_left=calculate_days_left
+        calculate_days_left=calculate_days_left,
+        get_redeem_cooldown=get_redeem_cooldown
     )
 
 
@@ -804,7 +857,8 @@ def add_person(tab):
         tab=tab,
         message=message,
         t=t,
-        calculate_days_left=calculate_days_left
+        calculate_days_left=calculate_days_left,
+        get_redeem_cooldown=get_redeem_cooldown
     )
 
 
@@ -827,7 +881,8 @@ def details(tab, index):
         person=person,
         message="",
         t=t,
-        calculate_days_left=calculate_days_left
+        calculate_days_left=calculate_days_left,
+        get_redeem_cooldown=get_redeem_cooldown
     )
 
 
@@ -897,7 +952,8 @@ def alter_time(tab, index):
         current_days=current_days,
         message=message,
         t=t,
-        calculate_days_left=calculate_days_left
+        calculate_days_left=calculate_days_left,
+        get_redeem_cooldown=get_redeem_cooldown
     )
 
 
@@ -917,8 +973,39 @@ def delete_person(tab, index):
     return redirect(url_for("dashboard", tab=tab, message=t("deleted")))
 
 
+@app.route("/redeem/<int:index>", methods=["POST"])
+def redeem_insurance(index):
+    if not login_required():
+        return redirect(url_for("login"))
+
+    data = load_data()
+
+    try:
+        person = data["insurance"][index]
+
+        existing_cooldown = get_redeem_cooldown(person)
+
+        # Prevent redeeming again while cooldown is active.
+        if existing_cooldown:
+            return redirect(url_for("dashboard", tab="insurance"))
+
+        cooldown_end = datetime.now() + timedelta(hours=INSURANCE_REDEEM_COOLDOWN_HOURS)
+        person["redeem_cooldown"] = cooldown_end.isoformat()
+
+        save_data(data)
+
+    except Exception:
+        pass
+
+    return redirect(url_for("dashboard", tab="insurance"))
+
+
 # ============================================================
 # RUN APP LOCALLY
 # ============================================================
 if __name__ == "__main__":
-    app.run(debug=True, host="127.0.0.1", port=5000)
+    # Railway provides the PORT automatically online.
+    # Locally, it will still use 5000.
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=False, host="0.0.0.0", port=port)
+
