@@ -528,10 +528,48 @@ HTML = """
     </style>
 
     <script>
-        // Auto-refresh every 60 seconds so countdown/status stays updated.
-        setTimeout(function() {
-            window.location.reload();
-        }, 1000);
+        // Updates insurance cooldown timers visually without reloading the page.
+        function updateCooldownTimers() {
+            const timers = document.querySelectorAll(".cooldown-timer");
+
+            timers.forEach(function(timer) {
+                const endTimeText = timer.getAttribute("data-end");
+
+                if (!endTimeText) {
+                    timer.textContent = "READY";
+                    timer.style.color = "#22C55E";
+                    return;
+                }
+
+                const endTime = new Date(endTimeText);
+                const now = new Date();
+                const remaining = endTime - now;
+
+                if (remaining <= 0) {
+                    timer.textContent = "READY";
+                    timer.style.color = "#22C55E";
+                    timer.style.fontWeight = "bold";
+                    return;
+                }
+
+                const totalSeconds = Math.floor(remaining / 1000);
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+
+                const formattedTime =
+                    String(hours).padStart(2, "0") + ":" +
+                    String(minutes).padStart(2, "0") + ":" +
+                    String(seconds).padStart(2, "0");
+
+                timer.textContent = formattedTime;
+                timer.style.color = "#F59E0B";
+                timer.style.fontWeight = "bold";
+            });
+        }
+
+        setInterval(updateCooldownTimers, 1000);
+        window.addEventListener("load", updateCooldownTimers);
 
         function confirmDelete() {
             return confirm("Are you sure you want to delete this person?");
@@ -624,9 +662,9 @@ HTML = """
                                         <td>
                                             {% set cooldown = get_redeem_cooldown(person) %}
                                             {% if cooldown %}
-                                                <span style="color:#F59E0B;font-weight:bold;">{{ cooldown }}</span>
+                                                <span class="cooldown-timer" data-end="{{ person.get('redeem_cooldown', '') }}" style="color:#F59E0B;font-weight:bold;">{{ cooldown }}</span>
                                             {% else %}
-                                                <span style="color:#22C55E;font-weight:bold;">READY</span>
+                                                <span class="cooldown-timer" data-end="" style="color:#22C55E;font-weight:bold;">READY</span>
                                             {% endif %}
                                         </td>
                                     {% endif %}
